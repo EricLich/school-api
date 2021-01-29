@@ -62,7 +62,12 @@ courseCtrl.deleteCourse = async (req, res) =>{
     }
 }
 
-//WORKING WITH STUDENTS 
+
+
+////////////////////////////////////////////////
+/////////// WORKING WITH STUDENTS /////////////
+//////////////////////////////////////////////
+
 //ADD STUDENT TO COURSE
 courseCtrl.addStudent = async (req, res) => {
     try{
@@ -71,21 +76,16 @@ courseCtrl.addStudent = async (req, res) => {
             return res.status(204).json({message: "Course does not exist"});  
         }else{
             if(course.courseStudents.length > 0){
-                let i = 0;
-                let added = false;
-                while(i < course.courseStudents.length && !added){
-                    if(course.courseStudents[i] == req.body.student_id){
-                        res.json({message: "Student already added to course"});
-                        added = true;
-                    }else{
-                        i++;
-                    }
-                }
-                if(!added){
+                const findStudent = (student_id, index) =>{
+                    return student_id == course.courseStudents[index];
+                }              
+                
+                if(course.courseStudents.findIndex(findStudent) == -1){
                     course.courseStudents.push(req.body.student_id);
                     course.save();
-                    added = true;
                     res.send(course.courseStudents);
+                }else{
+                    return res.json({message: "Student already added to course"});
                 }                
             }else{
                 course.courseStudents.push(req.body.student_id);
@@ -125,37 +125,116 @@ const getAllStudents = async (course) => {
     return students;
 }
 
+//DELETE STUDENT FROM COURSE
+courseCtrl.deleteStudent = async (req, res) => {
+    try{
+        const course = await Course.findById(req.params.course_id);
+        if(!course) return res.status(204).json({message: "Course does not exist"});
+        if(course.courseStudents.length > 0){
+    
+            const findStudent = (student_id, index) =>{
+                return student_id == course.courseStudents[index];
+            }      
+            
+            const studentIndex = course.courseStudents.findIndex(findStudent);
+            
+            if(studentIndex > -1){
+                course.courseStudents.splice(studentIndex, 1);
+                course.save();
+                return res.json({message: "Student deleted"});
+            }else{
+                return res.json({message: "Student not found"});
+            }
+        }else{
+            return res.json({message: "No students in this course"});
+        }
+    }catch(err){
+        console.log(err);
+    }
+}
 
-//WORKING WITH TEACHERS
+
+////////////////////////////////////////////////
+/////////// WORKING WITH TEACHERS /////////////
+//////////////////////////////////////////////
+
+//ADD TEACHER TO COURSE
 courseCtrl.addTeacher = async (req, res) => {
     try{
         const course = await Course.findById(req.params.course_id);
         if(!course){
             return res.status(204).json({message: "Course does not exist"});  
         }else{
-            if(course.courseTeachers.length > 0){
-                let i = 0;
-                let added = false;
-                while(i < course.courseTeachers.length && !added){
-                    if(course.courseTeachers[i] == req.body.teacher_id){
-                        res.json({message: "Teacher already added to course"});
-                        added = true;
-                    }else{
-                        course.courseTeachers.push(req.body.teacher_id);
-                        course.save();
-                        res.send(course.courseTeachers);
-                    }
-                    i++;
+            if(course.courseTeachers.length > 0){                
+                const findTeacher = (teacher_id, index) => {
+                    return course.courseTeachers[index] == teacher_id;
+                } 
+                if(course.courseTeachers.findIndex(findTeacher) > -1){
+                    return res.json({message: "Teacher already added to course"});
+                }else{
+                    course.courseTeachers.push(req.body.teacher_id);
+                    course.save();
+                    res.json({message: `Teacher with id ${req.body.teacher_id} added to course`});
                 }
             }else{
                 course.courseTeachers.push(req.body.teacher_id);
                 course.save();
-                res.send(course.courseTeachers);
+                res.json({message: `Teacher with id ${req.body.teacher_id} added to course`});
             }
         } 
     }catch(err){
         console.log(err);
     }
+}
+
+//GET ALL TEACHERS FROM COURSE
+courseCtrl.getCourseTeachers = async (req, res) => {
+    try{    
+        const course = await Course.findById(req.params.course_id);
+        if(!course) return res.status(204).json({message: "Course does not exist"});
+        if(course.courseTeachers.length > 0){
+            let teachers = await getAllTeachers(course);
+            return res.send(teachers);
+        }else{
+            return res.json({message: "No teachers added in course"});
+        }
+    }catch(err){
+        console.log(err);
+    }
+}
+
+const getAllTeachers = async (course) => {
+    let teachers = [];
+    for await(let teacher_id of course.courseTeachers){
+        let teacher = await Teacher.findById(teacher_id);
+        teachers.push(teacher);
+    }
+    return teachers;
+}
+
+
+//DELETE TEACHER FROM COURSE
+courseCtrl.deleteTeacher = async (req, res) => {
+    const course = await Course.findById(req.params.course_id);
+        if(!course){
+            return res.status(204).json({message: "Course does not exist"});  
+        }else{
+            if(course.courseTeachers.length > 0){                
+                const findTeacher = (teacher_id, index) => {
+                    return course.courseTeachers[index] == teacher_id;
+                } 
+                const teacherIndex = course.courseTeachers.findIndex(findTeacher); 
+                if(teacherIndex > -1){
+                    course.courseTeachers.splice(teacherIndex, 1);
+                    course.save();
+                    return res.json({message: "Teacher deleted from course"});
+                }else{
+                    return res.json({message: "The teacher is not in this course"});
+                }
+            }else{
+                return res.json({message: "No teachers in this course"})
+            }
+        }
 }
 
 
